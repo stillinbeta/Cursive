@@ -13,10 +13,10 @@ use self::termion::event::Key as TKey;
 use self::termion::event::MouseButton as TMouseButton;
 use self::termion::event::MouseEvent as TMouseEvent;
 use self::termion::input::MouseTerminal;
-use self::termion::raw::{IntoRawMode, RawTerminal};
 use self::termion::screen::AlternateScreen;
 use self::termion::style as tstyle;
 use crossbeam_channel::{self, Receiver};
+use std::time::Duration;
 
 use crate::backend;
 use crate::event::{Event, Key, MouseButton, MouseEvent};
@@ -313,13 +313,16 @@ impl backend::Backend for Backend {
     }
 
     fn poll_event(&mut self) -> Option<Event> {
-        self.events.try_recv().ok().map(|evt| match evt {
-            TelnetEvent::TEvent(t) => self.map_key(t),
-            TelnetEvent::ResizeEvent(w, h) => {
-                self.size = (w, h).into();
-                Event::WindowResize
-            }
-        })
+        self.events
+            .recv_timeout(Duration::from_millis(500))
+            .ok()
+            .map(|evt| match evt {
+                TelnetEvent::TEvent(t) => self.map_key(t),
+                TelnetEvent::ResizeEvent(w, h) => {
+                    self.size = (w, h).into();
+                    Event::WindowResize
+                }
+            })
     }
 }
 

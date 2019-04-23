@@ -65,6 +65,18 @@ version = "0.4.1"
 [dependencies.termion]
 optional = true
 version = "1.5.1"
+git = "https://github.com/stillinbeta/termion.git"
+rev = "c13e858d3f4a1eef1317f10c8ed0237c61f38018" 
+
+[dependencies.termiontelnet]
+optional = true
+version = "0.1.0"
+git = "https://github.com/stillinbeta/termiontelnet.git"
+rev = "5abf39f520080f8c44bfc8e7f882f30c1d55e5f2" 
+
+[dependencies.futures]
+optional = true
+version = "0.1.26"
 
 [dependencies.crossterm]
 optional = true
@@ -79,11 +91,12 @@ pretty-bytes = "0.2.2"
 
 [features]
 blt-backend = ["bear-lib-terminal"]
-default = ["ncurses-backend"]
+default = ["termion-telnet-backend"]
 markdown = ["pulldown-cmark"]
 ncurses-backend = ["ncurses", "maplit", "term_size"]
 pancurses-backend = ["pancurses", "maplit", "term_size"]
 termion-backend = ["termion"]
+termion-telnet-backend = ["termion", "termiontelnet", "futures"]
 crossterm-backend = ["crossterm"]
 unstable_scroll = []
 

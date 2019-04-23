@@ -186,6 +186,14 @@ impl Cursive {
         Self::try_new(backend::termion::Backend::init)
     }
 
+    /// Creates a new Cursive root using a termion backend.
+    #[cfg(feature = "termion-telnet-backend")]
+    pub fn termion_telnet(
+        conn: backend::termiontelnet::Connection,
+    ) -> std::io::Result<Self> {
+        Self::try_new(|| backend::termiontelnet::Backend::init(conn))
+    }
+
     /// Creates a new Cursive root using a crossterm backend.
     #[cfg(feature = "crossterm-backend")]
     pub fn crossterm() -> std::io::Result<Self> {
@@ -377,7 +385,8 @@ impl Cursive {
     ///
     /// `filename` must point to a valid toml file.
     pub fn load_theme_file<P: AsRef<Path>>(
-        &mut self, filename: P,
+        &mut self,
+        filename: P,
     ) -> Result<(), theme::Error> {
         theme::load_theme_file(filename).map(|theme| self.set_theme(theme))
     }
@@ -483,7 +492,9 @@ impl Cursive {
     /// # }
     /// ```
     pub fn call_on<V, F, R>(
-        &mut self, sel: &view::Selector<'_>, callback: F,
+        &mut self,
+        sel: &view::Selector<'_>,
+        callback: F,
     ) -> Option<R>
     where
         V: View + Any,
@@ -671,7 +682,9 @@ impl Cursive {
 
     /// Convenient stub forwarding layer repositioning.
     pub fn reposition_layer(
-        &mut self, layer: LayerPosition, position: Position,
+        &mut self,
+        layer: LayerPosition,
+        position: Position,
     ) {
         self.screen_mut().reposition_layer(layer, position);
     }

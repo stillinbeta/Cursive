@@ -21,6 +21,7 @@ pub mod blt;
 pub mod crossterm;
 pub mod curses;
 pub mod termion;
+pub mod termiontelnet;
 
 /// Trait defining the required methods to be a backend.
 ///

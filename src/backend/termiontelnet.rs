@@ -1,6 +1,6 @@
 //! Backend using the pure-rust termion library.
 //!
-//! Requires the `termion-backend` feature.
+//! Requires the `termion-telnet-backend` feature.
 #![cfg(feature = "termion-telnet-backend")]
 
 use futures::sink::Sink;
@@ -86,9 +86,7 @@ impl Write for SinkWriter {
 
 /// Backend using termion
 pub struct Backend {
-    terminal: RefCell<
-        AlternateScreen<MouseTerminal<RawTerminal<BufWriter<SinkWriter>>>>,
-    >,
+    terminal: RefCell<AlternateScreen<MouseTerminal<BufWriter<SinkWriter>>>>,
     current_style: Cell<theme::ColorPair>,
 
     // Inner state required to parse input
@@ -103,10 +101,9 @@ impl Backend {
         // Use a ~8MB buffer
         // Should be enough for a single screen most of the time.
         let (events, writer) = c.split();
-        let terminal =
-            RefCell::new(AlternateScreen::from(MouseTerminal::from(
-                BufWriter::with_capacity(8_000_000, writer).into_raw_mode()?,
-            )));
+        let terminal = RefCell::new(AlternateScreen::from(
+            MouseTerminal::from(BufWriter::with_capacity(8_000_000, writer)),
+        ));
 
         write!(terminal.borrow_mut(), "{}", termion::cursor::Hide)?;
 

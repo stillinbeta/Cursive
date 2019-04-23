@@ -16,7 +16,7 @@ use self::termion::input::MouseTerminal;
 use self::termion::raw::{IntoRawMode, RawTerminal};
 use self::termion::screen::AlternateScreen;
 use self::termion::style as tstyle;
-use crossbeam_channel::{self, select, Receiver};
+use crossbeam_channel::{self, Receiver};
 
 use crate::backend;
 use crate::event::{Event, Key, MouseButton, MouseEvent};
@@ -29,7 +29,7 @@ use std::io::{BufWriter, Write};
 /// Connection represents an incoming Telnet connection
 pub struct Connection {
     /// events is the channel we will receive events on
-    pub events: Receiver<TEvent>,
+    pub events: Receiver<TelnetEvent>,
     /// sink is the place we will send our bytes to
     pub sink: Box<
         dyn futures::Sink<
@@ -39,8 +39,16 @@ pub struct Connection {
     >,
 }
 
+/// Either a key press or a resize event
+pub enum TelnetEvent {
+    /// A Termion event
+    TEvent(TEvent),
+    /// The terminal has been resized
+    ResizeEvent(u16, u16),
+}
+
 impl Connection {
-    fn split(self) -> (Receiver<TEvent>, SinkWriter) {
+    fn split(self) -> (Receiver<TelnetEvent>, SinkWriter) {
         (
             self.events,
             SinkWriter {
@@ -66,19 +74,13 @@ pub struct SinkWriter {
 impl Write for SinkWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let size = buf.len();
-        eprintln!("Buffer sending...");
-        let r = self
-            .wait
+        self.wait
             .send(termiontelnet::ServerEvents::PassThrough(buf.into()))
-            .map(|_| size);
-        eprintln!("Buffer sent");
-        r
+            .map(|_| size)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let r = self.wait.flush();
-        eprintln!("Buffer flushed");
-        r
+        self.wait.flush()
     }
 }
 
@@ -91,7 +93,8 @@ pub struct Backend {
 
     // Inner state required to parse input
     last_button: Option<MouseButton>,
-    events: Receiver<TEvent>,
+    events: Receiver<TelnetEvent>,
+    size: Vec2,
 }
 
 impl Backend {
@@ -113,6 +116,7 @@ impl Backend {
 
             last_button: None,
             events: events,
+            size: (1, 1).into(),
         };
 
         Ok(Box::new(c))
@@ -266,10 +270,7 @@ impl backend::Backend for Backend {
     }
 
     fn screen_size(&self) -> Vec2 {
-        // TODO: termion::terminal_size currently requires stdout.
-        // When available, we should try to use /dev/tty instead.
-        let (x, y) = (100, 50); //termion::terminal_size().unwrap_or((1, 1));
-        (x, y).into()
+        self.size
     }
 
     fn clear(&self, color: theme::Color) {
@@ -315,11 +316,13 @@ impl backend::Backend for Backend {
     }
 
     fn poll_event(&mut self) -> Option<Event> {
-        let event = select! {
-            recv(self.events) -> event => event.ok(),
-            default => return None,
-        };
-        event.map(|event| self.map_key(event))
+        self.events.try_recv().ok().map(|evt| match evt {
+            TelnetEvent::TEvent(t) => self.map_key(t),
+            TelnetEvent::ResizeEvent(w, h) => {
+                self.size = (w, h).into();
+                Event::WindowResize
+            }
+        })
     }
 }
 
